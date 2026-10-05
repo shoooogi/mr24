@@ -47,13 +47,30 @@ public:
 
     double calculaPressao()
     {
-        // 3.3V = 4095 = 60 MPA
-        // < 0.5V? = 0 = 0 MPA
-        // +/- 0.1V = 146,25 = 2.1428 MPA
+        /*
+            Sensor de pressão de freio:
+            Tensão de saída: 0.5 V  a  4.5 V
+            Pressão mapeada:   0 MPa  a  60 MPa
+            O ADC do RP2040/ESP32 lê de 0 a 4095 (referência de 3.3 V)
+
+            Abaixo de 0.5 V a pressão é considerada nula.
+        */
+        const double VREF  = 3.3;
+        const double VMIN  = 0.5;
+        const double VMAX  = 4.5;
+        const double PMAX  = 60.0; // MPa
 
         int leitura = analogRead(PRESSAO_FREIO);
+        double tensao = (double)leitura / 4095.0 * VREF;
 
-        return (((double)leitura / 146.25) * 2.1428);
+        if (tensao <= VMIN)
+        {
+            return 0.0;
+        }
+
+        // Fator linear entre 0.0 e 1.0
+        double fator = (tensao - VMIN) / (VMAX - VMIN);
+        return fator * PMAX;
     }
 
     int getNivelAtual()

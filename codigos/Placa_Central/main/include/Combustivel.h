@@ -11,6 +11,18 @@
 #include "Setupable.h"
 #include "Constantes.h"
 
+/**
+ * !! AVISO DE SEGURANÇA CRÍTICO !!
+ * Os sensores capacitivos de nível de combustível são alimentados com 12 V.
+ * Os pinos de E/S do RP2040/ESP32 suportam no máximo 3.6 V de forma contínua
+ * (5.5 V como valor absoluto máximo, fora das especificações de operação).
+ *
+ * CONECTAR 12 V DIRETAMENTE Nesses PINOS PODE QUEIMAR O MICROCONTROLADOR.
+ * É obrigatório isolar os sensores com divisor de tensão (ex: 22 kΩ + 10 kΩ
+ * para obter ~3.3 V em nível cheio) ou com isolador digital, reduzindo o sinal
+ * de 12 V para no máximo 3.3 V antes de chegar ao microcontrolador.
+ */
+
 class Combustivel
 {
 public:

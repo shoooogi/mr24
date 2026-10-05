@@ -7,7 +7,7 @@
 
 #include "Setupable.h"
 #include "Constantes.h"
-#include "../libs/TinyGPSPlus-1.0.3a/src/TinyGPSPlus.h" // http://arduiniana.org/libraries/tinygps/
+#include <TinyGPSPlus.h> // http://arduiniana.org/libraries/tinygps/
 
 class GPS
 {
@@ -68,14 +68,9 @@ public:
     {
         while (Serial2.available())
         {
-            unsigned int t0 = millis();
-            unsigned int tf;
             char c = Serial2.read();
             if (gps.encode(c))
                 newData = true;
-
-            tf = millis();
-            // unsigned int tTotal = tf - t0;
         }
         return;
     }
@@ -177,6 +172,7 @@ private:
 };
 
 GPS *GPS::instance{nullptr};
+TinyGPSPlus GPS::gps;  // definição do membro estático declarado na classe
 GPS *GPS::GetInstance()
 {
     if (instance == nullptr)

@@ -21,14 +21,16 @@
 
 // -- Constantes --
 
-#define INTERVALO_TIMER_MS 1000
+#define INTERVALO_TIMER_MS 700
 #define TEMPERATURA_CRITICA_CVT 200
 #define RAIO_PNEU 22
 #define QTD_SENSORES_PNEU 4
 #define MINUTO_EM_MICROSSEGUNDOS 60000000
 
-static const long MINUTO = 60 * (1000 / INTERVALO_TIMER_MS);
 // static const bool DEBUG_MODE = true;
+
+// 60000 microssegundos por minuto (fixo, independente do intervalo do timer)
+static const long MINUTO = 60 * 1000;
 
 enum Nivel
 {
@@ -40,9 +42,13 @@ enum Nivel
 #define SERIAL_BAUD 115200 // SERIAL DEBUG
 
 // TELEMETRIA SERIAL1 UART
-#define TELEMETRIA_RX 1 // PINO RX UART LORA
-#define TELEMETRIA_TX 0 // PINO TX UART LORA
-#define TELEMETRIA_AUX 2
+// Fiação para o módulo LoRa E32:
+//   RP2040 pino 0 (TX) --> RX do E32
+//   RP2040 pino 1 (RX) --> TX do E32
+//   RP2040 pino 2 (AUX) --> pino AUX do E32 (modo TTL: HIGH)
+#define TELEMETRIA_RX 1 // PINO RX UART LORA (conectar ao TX do E32)
+#define TELEMETRIA_TX 0 // PINO TX UART LORA (conectar ao RX do E32)
+#define TELEMETRIA_AUX 2 // Pino AUX E32 para controle de modo TTL/ativo
 
 // TEMP CVT
 
@@ -107,8 +113,8 @@ struct _DadosCompartilhamento
     double tmpAmb;
     double rpm;
     double vel;
-    float latitude;
-    float longitude;
+    double latitude;
+    double longitude;
     bool errorCan;
     bool fix_gps;
     bool sdrw;

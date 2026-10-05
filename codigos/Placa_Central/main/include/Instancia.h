@@ -1,5 +1,6 @@
 /**
- * Project Classes Placa Central
+ * Project Classes Placa Central - Instancia principal (Singleton)
+ * Versao corrigida: usa ponteiros para singletons, evita copias perigosas.
  */
 
 #ifndef _INSTANCIA_H
@@ -9,7 +10,6 @@
 #include "Setupable.h"
 #include "Comunicacao.h"
 #include "CartaoSD.h"
-#include "TensaoBateria.h"
 #include "TemperaturaCVT.h"
 #include "Combustivel.h"
 #include "RPM_Motor.h"
@@ -17,214 +17,139 @@
 #include "Constantes.h"
 #include "Freio.h"
 #include "Velocidade.h"
+#include "PedalAcelerador.h"
+#include "TensaoBateria.h"
 #include "Dados.h"
 
-/**
- * Esse é o principal caso de exemplo para Singletons.
- * https://refactoring.guru/pt-br/design-patterns/singleton/cpp/example#example-1
- */
 class Instancia
 {
 public:
     Instancia() = default;
 
-public:
     static Instancia *GetInstance();
 
-    bool *estadoSistemas;
-    bool *testeSistemas;
-
-    void TesteAtualizarDados()
-    {
-        temperaturaCvt.setValoresDeTeste();
-        rpm.setValoresDeTeste();
-        nivelCombustivel.setValoresDeTeste();
-        freio.setValoresDeTeste();
-        velocidade.setValoresDeTeste();
+    void TesteAtualizarDados() {
+        temperaturaCvt->setValoresDeTeste();
+        rpm->setValoresDeTeste();
+        nivelCombustivel->setValoresDeTeste();
+        freio->setValoresDeTeste();
+        velocidade->setValoresDeTeste();
     }
 
-    void EscreverSD()
-    {
-        // while (dados.getDadosEmAtualizacao)
-        // {
-        //     yield();
-        // }
-
-        cartaoSD.escreverSD(dados.formatarDadosSD());
-        return;
+    void EscreverSD() {
+        cartaoSD->escreverSD(dados->formatarDadosSD());
     }
 
-    void InicializarArquivo(){
-        cartaoSD.criarArquivoDados();
+    void InicializarArquivo() {
+        cartaoSD->criarArquivoDados();
     }
 
-    void SetDadosSistemas()
-    {
-        // rpm.updateRPM();
-        nivelCombustivel.setNivelAtual();
-        freio.setNivelAtual();
-        freio.setPressaoAtual();
-        // Pedal Acelerador
-        // Tensao Bateria
-        // temperaturaCvt.setTemperaturaObjeto();
-        // temperaturaCvt.setTemperaturaAmbiente();
-        // velocidade.updateVel();
+    void SetDadosSistemas() {
+        // Atualiza sensores que não usam interrupção
+        nivelCombustivel->setNivelAtual();
+        freio->setNivelAtual();
+        freio->setPressaoAtual();
+        // RPM e Velocidade são atualizados via ISR
+        // Pedal e Tensão são lidos sob demanda (getters)
+        // Temperatura lida sob demanda
     }
 
-    bool SincronizarDados()
-    {
-        dados.atualizarDados(
-            0,
-            freio.getNivelAtual(),
-            freio.getPressaoAtual(),
-            0.0, // Pedal Acelerador
-            tensaoBat.getTensaoBateria(), // Tensao Bateria
-            0, //temperaturaCvt.getTemperaturaObjeto()
-            0, //temperaturaCvt.getTemperaturaAmbiente()
-            rpm.getRPM(),
-            velocidade.getVel(),
-            0, //gps.getLatitude()
-            0, //gps.getLongitude()
-            comunicacao.getErrorCan(),
-            cartaoSD.getSdrw(),
-            gps.getFix()
-        ); 
-            
-        // dados.atualizarDados(0, 1, 2, 500, 4, 5, 6, 7, 200);
+    bool SincronizarDados() {
+        gps->updateGPS();
 
+        dados->atualizarDados(
+            nivelCombustivel->getNivelAtual(),
+            freio->getNivelAtual(),
+            freio->getPressaoAtual(),
+            pedalAcelerador->updatePedalAcelerador(),
+            tensaoBat->updateTensaoBateria(),
+            temperaturaCvt->setTemperaturaObjeto(),
+            temperaturaCvt->setTemperaturaAmbiente(),
+            rpm->getRPM(),
+            velocidade->getVel(),
+            gps->getLatitude(),
+            gps->getLongitude(),
+            comunicacao->isCanInitialized(),  // status CAN real
+            cartaoSD->getSdrw(),
+            gps->getFix()
+        );
         return false;
     }
 
-    void PrintarDados()
-    {
-        D_println(dados.formatarDados());
+    void PrintarDados() {
+        D_println(dados->formatarDados());
     }
 
-    bool EnviarDadosTelemetria()
-    {
-        // String data = String(rpm.getRPM());
-        // data = String(data + ",");
-        // data = String(data + temperaturaCvt.getTemperaturaObjeto());
-        // data = String(data + ",");
-        // data = String(data + gps.getSpeed());
-        // data = String(data + ",");
-        // data = String(data + nivelCombustivel.getNivelAtual());
-        comunicacao.enviarDadosTelemetria(dados.getStructDadosLight());
-        Serial.println(dados.getStructDadosLight().rpm);
+    bool EnviarDadosTelemetria() {
+        comunicacao->enviarDadosTelemetria(dados->getStructDadosLight());
         return false;
     }
 
-    bool EnviarDadosCanBus()
-    {
-        // packet1
-        // nivelCombustível = short = 2
-        // nivelAtualFreio = int = 2
-        // pressaoAtualFreio = double = 4
+    bool EnviarDadosCanBus() {
+        return comunicacao->sendCanDataTo(dados->getStructDados());
+    }
 
-        // packet2
-        // pedalAcel = double = 4
-        // tensaoBat = double = 4
+    // Processa recepção CAN (polling) - chamado periodicamente
+    void ProcessarCanRx() {
+        comunicacao->processCanRx();
+    }
 
-        // packet3
-        // tempObj = float = 4
-        // tempAmb = float = 4
-
-        // packet4
-        // rpm = double = 4
-        // vel = double = 4
-
-        // TODO: Revisar funcionamento e nome do metodo
-        comunicacao.sendCanDataTo(dados.getStructDados());
-        return false;
+    // Watchdog CAN: verifica se comunicação está viva
+    bool CanWatchdogOk() const {
+        uint32_t now = millis();
+        uint32_t lastRx = comunicacao->getLastRxTime();
+        // Se nunca recebeu nada, OK nos primeiros 10s (boot)
+        if (lastRx == 0) return (now < 10000);
+        return (now - lastRx) < CAN_WATCHDOG_MS;
     }
 
 private:
     static Instancia *instance;
-    byte data[5]; // Dados transmitidos entre dispositivos.
 
-    Comunicacao comunicacao;
-    CartaoSD cartaoSD;
-    TemperaturaCVT temperaturaCvt;
-    Combustivel nivelCombustivel;
-    RPM_Motor rpm;
-    GPS gps;
-    Freio freio;
-    TensaoBateria tensaoBat;
-    Velocidade velocidade;
-    DadosSincronizados dados;
+    // Ponteiros para singletons (evita cópia e garante inicialização preguiçosa)
+    Comunicacao*        comunicacao = nullptr;
+    CartaoSD*           cartaoSD = nullptr;
+    TemperaturaCVT*     temperaturaCvt = nullptr;
+    Combustivel*        nivelCombustivel = nullptr;
+    RPM_Motor*          rpm = nullptr;
+    GPS*                gps = nullptr;
+    Freio*              freio = nullptr;
+    TensaoBateria*      tensaoBat = nullptr;
+    Velocidade*         velocidade = nullptr;
+    PedalAcelerador*    pedalAcelerador = nullptr;
+    DadosSincronizados* dados = nullptr;
+
+    // Inicialização preguiçosa dos submódulos
+    void ensureInitialized() {
+        if (!comunicacao)        comunicacao = Comunicacao::GetInstance();
+        if (!cartaoSD)           cartaoSD = CartaoSD::GetInstance();
+        if (!temperaturaCvt)     temperaturaCvt = TemperaturaCVT::GetInstance();
+        if (!nivelCombustivel)   nivelCombustivel = Combustivel::GetInstance();
+        if (!rpm)                rpm = RPM_Motor::GetInstance();
+        if (!gps)                gps = GPS::GetInstance();
+        if (!freio)              freio = Freio::GetInstance();
+        if (!tensaoBat)          tensaoBat = TensaoBateria::GetInstance();
+        if (!velocidade)         velocidade = Velocidade::GetInstance();
+        if (!pedalAcelerador)    pedalAcelerador = PedalAcelerador::Setup();
+        if (!dados)              dados = new DadosSincronizados();
+    }
 };
+
 Instancia *Instancia::instance{nullptr};
-Instancia *Instancia::GetInstance()
-{
-    if (instance == nullptr)
-    {
-        D_println("Criando nova instancia");
 
+Instancia *Instancia::GetInstance() {
+    if (instance == nullptr) {
         instance = new Instancia();
-        instance->dados = *(new DadosSincronizados());
+        instance->ensureInitialized();
 
-        int i = 0;
-        while (i < 3)
-        {
-            digitalWrite(LED_BUILTIN, HIGH);
-            delay(75);
-            digitalWrite(LED_BUILTIN, LOW);
-            delay(75);
-            i++;
+        // LED de inicialização (3 piscadas rápidas = boot OK)
+        for (int i = 0; i < 3; i++) {
+            digitalWrite(LED_BUILTIN, HIGH); delay(75);
+            digitalWrite(LED_BUILTIN, LOW);  delay(75);
         }
-        digitalWrite(LED_BUILTIN, HIGH);
-
-        digitalWrite(LED_BUILTIN, LOW);
-        D_println("Iniciando em Debug Mode");
-        D_println("Piscando led");
-
-        i = 0;
-        while (i < 3)
-        {
-            digitalWrite(LED_BUILTIN, HIGH);
-            delay(75);
-            digitalWrite(LED_BUILTIN, LOW);
-            delay(75);
-            i++;
-        }
-
-        D_println("Mantendo led aceso");
-        // digitalWrite(LED_BUILTIN, HIGH);
-
-        D_println("Chamando Setup");
-
-        // instance->gps = *GPS::GetInstance();
-        D_println("Setup GPS concluido");
-
-        instance->comunicacao = *Comunicacao::GetInstance();
-        D_println("Setup comunicacao concluido");
-
-        // instance->temperaturaCvt = *TemperaturaCVT::GetInstance();
-        D_println("Setup temperaturaCvt concluido");
-
-        instance->rpm = *RPM_Motor::GetInstance();
-        D_println("Setup rpm concluido");
-
-        // instance->nivelCombustivel = *Combustivel::GetInstance();
-        D_println("Setup nivelCombustivel concluido");
-
-        instance->freio = *Freio::GetInstance();
-        D_println("Setup freio concluido");
-
-        instance->tensaoBat = *TensaoBateria::GetInstance();
-        D_println("Setup tensao bateria concluido");
-
-        instance->velocidade = *Velocidade::GetInstance();
-        D_println("Setup velocidade concluido");
-
-        instance->cartaoSD = *CartaoSD::GetInstance();
-        D_println("Setup cartaoSD concluido");
-
         D_println("Setup concluido");
     }
     return instance;
 }
 
-typedef class Instancia Instancia;
-
-#endif //_INSTANCIA_H
+#endif // _INSTANCIA_H
