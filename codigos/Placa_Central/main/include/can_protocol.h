@@ -126,7 +126,7 @@ inline uint8_t unpack_uint8(const uint8_t* buf) {
 // ============================================================
 #define CAN_QUARTZ_FREQUENCY_HZ   (20UL * 1000UL * 1000UL)  // 20 MHz
 #define CAN_BITRATE_BPS           (125UL * 1000UL)           // 125 kbps
-#define CAN_MODE_NORMAL           ACAN2515Settings::LoopBackMode
+#define CAN_MODE_NORMAL           ACAN2515Settings::NormalMode
 
 // ============================================================
 // Watchdog de comunicação (tempo máximo sem receber frame crítico)

@@ -103,6 +103,11 @@ public:
         return (now - lastRx) < CAN_WATCHDOG_MS;
     }
 
+    // Getter para acesso ao módulo de comunicação (para debug/teste)
+    Comunicacao* getComunicacao() const {
+        return comunicacao;
+    }
+
 private:
     static Instancia *instance;
 

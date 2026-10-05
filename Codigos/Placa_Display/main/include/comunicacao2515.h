@@ -84,7 +84,10 @@ static bool setupComunicacao() {
 
     if (errorCode == 0) {
         canConnected = true;
-        Serial.println(F("[CAN] Inicialização OK (LoopBackMode, 125kbps, 20MHz)"));
+        const __FlashStringHelper* modeStr = (CAN_MODE_NORMAL == ACAN2515Settings::NormalMode) ? F("NormalMode") : F("LoopBackMode");
+        Serial.print(F("[CAN] Inicialização OK ("));
+        Serial.print(modeStr);
+        Serial.println(F(", 125kbps, 20MHz"));
         return true;
     } else {
         canConnected = false;
@@ -184,6 +187,7 @@ static void handleFrame(const CANMessage& frame) {
  */
 static int receiveCan() {
     if (!canConnected) return 0;
+    can.poll();  // Processa interrupções TX/RX
 
     int count = 0;
     CANMessage frame;

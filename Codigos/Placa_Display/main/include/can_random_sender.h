@@ -18,7 +18,7 @@
 
 // Controle do gerador: ligue/desligue com esta variável.
 // PADRÃO = false (gerador DESATIVADO em produção).
-bool enableRandomCAN = true;  // ATIVADO para teste de loopback
+bool enableRandomCAN = false;  // ATIVADO para teste de loopback
 
 // Intervalo entre quadros (ms)
 static unsigned long ultimoEnvio = 0;

@@ -10,6 +10,7 @@
 #include "include/Instancia.h"
 #include "include/Comunicacao.h"
 #include "include/can_protocol.h"
+#include "include/can_random_sender.h"  // DEBUG: dados aleatórios
 
 /**
  * DECLARAÇÕES DE FUNÇÕES
@@ -41,6 +42,9 @@ void setup()
     D_println(F("INICIALIZANDO INSTANCIA"));
     D_println(F("======================="));
     myInstance = Instancia::GetInstance();
+
+    // DEBUG: Inicializa gerador aleatório CAN (desativado por padrão)
+    setupRandomCAN();
 
     D_println(F("======================="));
     D_println(F("INICIALIZACAO CONCLUIDA"));
@@ -78,12 +82,17 @@ void loop()
     if (now - lastCanTx >= CAN_TX_INTERVAL_MS) {
         lastCanTx = now;
 
-        // Atualiza dados que mudam no core 0 (nenhum no momento, mas mantém estrutura)
-        myInstance->SincronizarDados();
+        // DEBUG: Modo aleatório substitui sensores reais
+        if (enableRandomCAN) {
+            sendRandomCAN(myInstance->getComunicacao());
+        } else {
+            // Atualiza dados que mudam no core 0 (nenhum no momento, mas mantém estrutura)
+            myInstance->SincronizarDados();
 
-        // Envia CAN (com mutex interno)
-        if (!myInstance->EnviarDadosCanBus()) {
-            D_println(F("[WARN] Falha no envio CAN"));
+            // Envia CAN (com mutex interno)
+            if (!myInstance->EnviarDadosCanBus()) {
+                D_println(F("[WARN] Falha no envio CAN"));
+            }
         }
 
         // Telemetria LoRa (menos frequente, pode ser a cada 2-3 ciclos CAN)

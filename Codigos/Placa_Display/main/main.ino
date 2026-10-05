@@ -38,6 +38,17 @@ void loop() {
     static uint32_t lastTest = 0;
     static int testId = 1;
     uint32_t now = millis();
+
+    static uint32_t lastDebug = 0;
+    if (millis() - lastDebug > 2000) {
+       lastDebug = millis();
+       const __FlashStringHelper* modeStr = (CAN_MODE_NORMAL == ACAN2515Settings::NormalMode) ? F("NormalMode") : F("LoopBackMode");
+       Serial.print(F("[DBG] mode=")); Serial.print(modeStr);
+       Serial.print(F(" canConnected=")); Serial.print(canConnected);
+       Serial.print(F(" can_conn=")); Serial.print(can_conn);
+       Serial.print(F(" rpm=")); Serial.print(rpm);
+       Serial.print(F(" vel=")); Serial.println(vel);
+    }
     
     if (now - lastTest >= 1000) {  // 1 frame/seg
         lastTest = now;
@@ -70,7 +81,15 @@ void loop() {
     ::TCvt = tempCvt; ::TProtecao = tempAmb; ::nivelFreio = nivelFreio;
     ::comb = (short)nivelComb; ::posAcelerador = pedal; ::pressFreio = pressaoFreio;
     ::latitudeCan = lat; ::longitudeCan = lon; ::sd_rw = sdRw; ::gps_conn = gpsFix;
-    
+
+    // Formata strings para o display (trpm, tvel)
+    char trpm_local[10];
+    char tvel_local[10];
+    sprintf(trpm_local, "%d", ::rpm);
+    sprintf(tvel_local, "%d", ::vel);
+    strcpy((char*)trpm, trpm_local);
+    strcpy((char*)tvel, tvel_local);
+
     updateHUDMain(true, false, false);
     delay(10);
 }
