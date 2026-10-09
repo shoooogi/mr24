@@ -1,6 +1,6 @@
 /**
  * Project Classes Placa Central - Dados sincronizados
- * Versão corrigida: sem String (usa char[] + snprintf), structs inicializadas corretamente.
+ * Versão corrigida: sem String (usa char[] + snprintf), structs padronizadas float.
  */
 
 #ifndef _DADOS_H
@@ -16,8 +16,8 @@
 #include <cstdio>  // snprintf
 
 /**
- * Struct de dados para uso temporário dos dados de forma organizada.
- * Structs definidas em Constantes.h: DadosCompartilhamento (14 campos), DadosLight (3 campos).
+ * Classe para gerenciar dados sincronizados entre sensores, CAN, SD e Telemetria.
+ * Usa float (4 bytes) para precisão suficiente e economia de banda.
  */
 class DadosSincronizados
 {
@@ -69,23 +69,30 @@ public:
         fix_gps       = fix_gps1;
 
         atualizaDadosCompartilhamento();
+        atualizaDadosTelemetria();
         dadosEmAtualizacao = false;
     }
 
-    // Retorna cópia da struct para envio CAN (usa float para banda otimizada)
+    // Retorna cópia da struct para envio CAN (usa float)
     DadosCompartilhamento getStructDados() const {
         return dadosCompartilhamento;
     }
 
+    // Retorna struct leve para telemetria (compatibilidade)
     DadosLight getStructDadosLight() const {
         return dadosLight;
+    }
+
+    // Nova struct expandida para telemetria completa
+    DadosTelemetria getStructTelemetria() const {
+        return dadosTelemetria;
     }
 
     bool getDadosEmAtualizacao() const {
         return dadosEmAtualizacao;
     }
 
-    // Acessores individuais (para display/debug)
+    // Acessores individuais
     short  getNivelComb() const { return nivelComb; }
     int    getNivelFreio() const { return nivelFreio; }
     double getPressaoFreio() const { return pressaoFreio; }
@@ -118,25 +125,33 @@ private:
     bool fix_gps = false;
     bool sdrw = false;
 
-    // Struct para CAN/Telemetria (inicializada explicitamente com TODOS os 14 campos)
+    // Struct para CAN/Telemetria (float para banda otimizada)
     DadosCompartilhamento dadosCompartilhamento = {
         0,      // short nivelComb
         0,      // int nivelFreio
-        0.0,    // float pressaoFreio
-        0.0,    // float pedal
-        0.0,    // float tensaoBat
-        0.0f,   // double tmpCvt
-        0.0f,   // double tmpAmb
-        0.0,    // double rpm
-        0.0,    // double vel
-        0.0,    // double latitude
-        0.0,    // double longitude
+        0.0f,   // float pressaoFreio
+        0.0f,   // float pedal
+        0.0f,   // float tensaoBat
+        0.0f,   // float tmpCvt
+        0.0f,   // float tmpAmb
+        0.0f,   // float rpm
+        0.0f,   // float vel
+        0.0f,   // float latitude
+        0.0f,   // float longitude
         false,  // bool errorCan
         false,  // bool fix_gps
         false   // bool sdrw
     };
 
+    // Struct leve original (compatibilidade)
     DadosLight dadosLight = { 0.0, 0.0, 0.0 };
+
+    // Nova struct expandida para telemetria completa
+    DadosTelemetria dadosTelemetria = {
+        0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        0, 0, 0.0f, 0.0f,
+        0.0f, 0.0f, 0, 0, 0, 0
+    };
 
     void atualizaDadosCompartilhamento() {
         dadosCompartilhamento.nivelComb   = nivelComb;
@@ -157,6 +172,24 @@ private:
         dadosLight.vel     = vel;
         dadosLight.rpm     = rpm;
         dadosLight.tensaoBat = tensaoBat;
+    }
+
+    void atualizaDadosTelemetria() {
+        dadosTelemetria.rpm         = rpm;
+        dadosTelemetria.vel         = vel;
+        dadosTelemetria.tensaoBat   = tensaoBat;
+        dadosTelemetria.tempCvt     = tmpCvt;
+        dadosTelemetria.tempAmb     = tmpAmb;
+        dadosTelemetria.nivelComb   = nivelComb;
+        dadosTelemetria.nivelFreio  = nivelFreio;
+        dadosTelemetria.pedal       = pedal;
+        dadosTelemetria.pressaoFreio = pressaoFreio;
+        dadosTelemetria.latitude    = latitude;
+        dadosTelemetria.longitude   = longitude;
+        dadosTelemetria.sdrw        = sdrw ? 1 : 0;
+        dadosTelemetria.fix_gps     = fix_gps ? 1 : 0;
+        dadosTelemetria.errorCan    = errorCan ? 1 : 0;
+        dadosTelemetria.timestamp   = millis();
     }
 };
 

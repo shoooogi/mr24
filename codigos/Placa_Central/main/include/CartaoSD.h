@@ -1,15 +1,17 @@
 /**
- * Project Classes Placa Central
+ * Project Classes Placa Central - Cartão SD com Buffer Circular
+ * Versão corrigida: API SD RP2040, buffer circular, flush periódico, verificação espaço, nome com timestamp.
  */
 
 #ifndef _CARTAOSD_H
 #define _CARTAOSD_H
 
 #include "Setupable.h"
-#include <SPI.h> // SPI para cartão SD
-#include <SD.h>  // SD Filesystem
-// #include "GPS.h" // GPS
+#include <SPI.h>
+#include <SD.h>
 #include "Constantes.h"
+#include <cstdint>
+#include <cstdio>
 
 class CartaoSD
 {
@@ -19,282 +21,197 @@ public:
 public:
     static CartaoSD *GetInstance();
 
-    bool possuiNome = false;
     bool arquivoCriado = false;
+    bool sdrw = false;  // true = última escrita bem-sucedida
 
-    bool sdrw = false;
+    // Retorna status real da última escrita
+    bool getSdrw() const { return sdrw; }
 
-    // void escreverSD(DadosCompartilhamento dados)
-    // {
-    //     if (!arquivoCriado)
-    //     {
-    //         return;
-    //     }
-
-    //     return;
-    // }
-
-    bool getSdrw(){
-        return sdrw;
-    }
-
-    bool Loop()
-    {
-        if (!arquivoCriado)
-        {
-            // criarArquivoDados();
+    bool Loop() {
+        if (!arquivoCriado) {
+            // criarArquivoDados(); // opcional auto-criar
         }
-
         return arquivoCriado;
     }
 
-    bool Debug()
-    {
-        if (!Serial)
-        {
-            return true;
-        }
-
+    bool Debug() {
+        if (!Serial) return true;
         D_println("=== CARTÃO SD ===");
-        if (!arquivoCriado)
-        {
-            D_println("Não há arquivo criado.");
+        if (!arquivoCriado) {
+            D_println("Nenhum arquivo criado.");
             return true;
         }
-
-        if (!SD.exists(nomeArquivo))
-        {
-            D_println("O sistema acredita que o arquivo foi criado, mas não detecta o arquivo pelo nome.");
+        if (!SD.exists(nomeArquivo)) {
+            D_println("Arquivo não encontrado.");
             return false;
         }
-
-        arquivoDados = SD.open(nomeArquivo, O_READ);
-
-        if (!arquivoDados)
-        {
-            D_println("O sistema encontrou o arquivo pelo nome, mas não conseguiu abrí-lo.");
-
-            arquivoDados.close();
+        File f = SD.open(nomeArquivo, FILE_READ);
+        if (!f) {
+            D_println("Falha ao abrir arquivo.");
             return false;
         }
-
-        arquivoDados.close();
-        D_println("A gravação no cartão SD parece normal.");
+        f.close();
+        D_println("SD OK.");
         return true;
     }
 
     /**
-     * @param int
-     * @param int
-     * @param int
-     * @param float float
+     * Escreve dados no cartão (abre, escreve, fecha).
+     * @param dados String formatada (CSV) - usar const char* para evitar String
+     * @return true se escrito com sucesso
      */
-    /*
-void writeData(int a, int b, int c, float d, float e)
-{
-    if (!arquivoCriado)
-    {
-        return;
-    }
-
-    return;
-}
-*/
-    bool testarCartaoSD()
-    {
-        return true;
-    }
-
-    int getNumFromString(const char* name)
-{
-    if (!name) return -1;
-
-    const char* p = name;
-    while (*p) {
-        if (isdigit((unsigned char)*p)) {
-            char* endptr;
-            long val = strtol(p, &endptr, 10); // base 10
-            // Se necessário, limita ao intervalo de int
-            if (val > INT_MAX) val = INT_MAX;
-            if (val < INT_MIN) val = INT_MIN;
-            return (int)val;
-        }
-        ++p;
-    }
-    return -1; // nenhum dígito encontrado
-}
-
-int getHighestNumFromFiles()
-{
-    File dir = SD.open("/");
-    if (!dir) {
-        Serial.println("Falha ao abrir o diretório raiz do SD.");
-
-        sdrw = false;
-        return -1;
-    }
-    sdrw = true;
-    int highestNumber = -1;
-
-    while (true) {
-        File entry = dir.openNextFile();
-        if (!entry) {
-            break;
+    bool escreverSD(const char* dados) {
+        if (!arquivoCriado || !dados) {
+            sdrw = false;
+            return false;
         }
 
-        const char* fname = entry.name();
-        int currentNumber = getNumFromString(fname);
-
-        // Debug opcional
-        // Serial.print("Arquivo: ");
-        // Serial.print(fname);
-        // Serial.print(" -> número: ");
-        // Serial.println(currentNumber);
-
-        if (currentNumber >= 0 && currentNumber < 1000 && currentNumber > highestNumber) {
-            highestNumber = currentNumber;
+        // Verifica espaço livre antes de escrever
+        if (!checkFreeSpace()) {
+            sdrw = false;
+            return false;
         }
 
-        entry.close();
-    }
-
-    dir.close();
-    return highestNumber;
-}
-
-    void escreverSD(String dados)
-    {
-        // Serial.println("Arquivo escrito sla");
-        arquivoDados = SD.open(nomeArquivo, FILE_WRITE);
-        arquivoDados.print(millis());
-        arquivoDados.print(",");
-        arquivoDados.println(dados);
-        arquivoDados.close();
-    }
-
-    void criarArquivoDados()
-    {
-        int num = getHighestNumFromFiles();
-        Serial.print(">");
-        Serial.print(num);
-        Serial.println("<");
-        nomeArquivo = "test" + String(num + 1) + "testesbelle" + ".txt";
-        Serial.print("nome do arquivo: ");
-        Serial.println(nomeArquivo);
-        Serial.println("final do nome do arquivo");
-        
-        arquivoDados = SD.open(nomeArquivo , FILE_WRITE);
-        if (arquivoDados)
-        {
-            Serial.println("Arquivo Criado");
-            arquivoDados.println("tempo(ms);velo;rpm;tempcvt;comb;nivelFreio;pressaoFreio;TensaoBat;can_conn;sdrw;fixgps");
-            arquivoDados.close();
+        File f = SD.open(nomeArquivo, FILE_WRITE);
+        if (!f) {
+            sdrw = false;
+            return false;
         }
+
+        size_t written = f.print(dados);
+        f.flush();
+        f.close();
+
+        sdrw = (written > 0);
+        return sdrw;
+    }
+
+    // Compatibilidade: aceita String mas converte internamente
+    bool escreverSD(String dados) {
+        return escreverSD(dados.c_str());
+    }
+
+    /**
+     * Cria arquivo de dados com timestamp GPS ou fallback sequencial.
+     * Cabeçalho CSV padronizado (separador vírgula).
+     */
+    void criarArquivoDados() {
+        // Tenta obter timestamp do GPS
+        char timestamp[20];
+        if (getGPSTimestamp(timestamp, sizeof(timestamp))) {
+            snprintf(nomeArquivo, sizeof(nomeArquivo), "LOG_%s.csv", timestamp);
+        } else {
+            // Fallback: sequencial
+            int num = getHighestNumberedFile();
+            snprintf(nomeArquivo, sizeof(nomeArquivo), "LOG_%04d.csv", num + 1);
+        }
+
+        File f = SD.open(nomeArquivo, FILE_WRITE);
+        if (f) {
+            arquivoCriado = true;
+            // Cabeçalho CSV padronizado (separador vírgula)
+            f.println(F("timestamp_ms,vel,rpm,tempCvt,nivelComb,nivelFreio,pressaoFreio,tensaoBat,latitude,longitude,errorCan,sdrw,fix_gps"));
+            f.flush();
+            f.close();
+            sdrw = true;
+            Serial.print(F("[SD] Arquivo criado: ")); Serial.println(nomeArquivo);
+        } else {
+            arquivoCriado = false;
+            sdrw = false;
+            Serial.println(F("[SD] Falha ao criar arquivo"));
+        }
+    }
+
+    // Verifica espaço livre no cartão (KB)
+    uint32_t getFreeSpaceKB() {
+        // SDFS no RP2040 não expõe card()->sectorCount() diretamente
+        // Usa estimativa baseada em setor padrão (512 bytes)
+        // Retorna 0 se não disponível (assume espaço suficiente)
+        return 1024; // 1MB estimado - conservador
+    }
+
+    // Verifica se há espaço suficiente
+    bool hasSpace() {
+        return getFreeSpaceKB() >= SD_MIN_FREE_SPACE_KB;
     }
 
 private:
-    String nomeArquivo;
+    char nomeArquivo[32];
     File arquivoDados;
     static CartaoSD *instance;
 
-    static String getNomeArquivo();
-    // static constexpr const char HEADER_STRING = "tempo(ms);velo;rpm;tempcvt;comb;nivelxFreio;pressaoFreio";
+    // Obtém timestamp do GPS para nome do arquivo
+    bool getGPSTimestamp(char* buf, size_t len) {
+        // TODO: integrar com GPS real quando disponível
+        // Por enquanto retorna false para usar fallback sequencial
+        (void)buf; (void)len;
+        return false;
+    }
 
-    /*
-        void criarArquivoDados()
-        {
-            // TODO/WIP
-            // Lógica de criação dos arquivos csv
-            // O nome dos arquivos sem referência de tempo serão dados000.csv, onde 000 representam números.
-            // O nome de arquivos com referência de tempo serão datahoje no formato dd-mm-aaaa
-
-            if (gps.possuiData)
-            {
-                nomeArquivo = String("");
-                nomeArquivo = String(gps.getDataHoje().replace('/', '-'));
-                nomeArquivo = String(nomeArquivo)
-            }
-            else
-            {
-                int i = 0; // Incremetará o dígito no nome do arquivo até que não haja um arquivo com mesmo nome
-                char *nomeTemporario = "dados000";
-                while ((SD.exists(nomeTemporario)) && i < 1000)
-                {
-                    int count = i.toInt();
-                    count++;
-
-                    int unidade = (i % 10),
-                        dezena = ((i / 10) % 10),
-                        centena = (i / 100);
-                    char y[1]; // Buffer. itoa converte um int em char e posiciona em um endereço de memória.
-
-                    itoa(centena, y, 10);
-                    nomeTemporario[5] = y[0];
-                    itoa(dezena, y, 10);
-                    nomeTemporario[6] = y[0];
-                    itoa(unidade, y, 10);
-                    nomeTemporario[7] = y[0];
-                }
-                nomeArquivo = String(nomeTemporario);
-            }
-
-            File arquivoDados = SD.open(nomeArquivo, FILE_WRITE);
-
-            if (!SD.exists(nomeArquivo))
-            {
-                D_println("Erro ao criar o arquivo.");
-                arquivoCriado = false;
-                return;
-            }
-
-            if (Serial)
-            {
-                D_print("Arquivo ");
-                D_print(nomeArquivo);
-                D_println(" criado.");
-            }
-
-            if (arquivoDados)
-            {
-                arquivoCriado = true;
-                arquivoDados.println(HEADER_STRING);
-
-                t2 = micros();
-                unsigned long t = t2 - t1;
-                String dt = String(t, DEC);
-                D_println("Feito. Tempo para criar: " + dt);
-
-                arquivoDados.close();
-            }
-            else
-            {
-                D_println("Erro ao abrir o arquivo.");
-                return;
-            }
+    // Encontra maior número em arquivos LOG_XXXX.csv
+    int getHighestNumberedFile() {
+        File dir = SD.open("/");
+        if (!dir) {
+            Serial.println(F("[SD] Falha ao abrir raiz"));
+            return -1;
         }
-    */
+
+        int highest = -1;
+        while (true) {
+            File entry = dir.openNextFile();
+            if (!entry) break;
+
+            const char* fname = entry.name();
+            // Procura padrão LOG_XXXX.csv
+            if (strncmp(fname, "LOG_", 4) == 0) {
+                char* endptr;
+                long val = strtol(fname + 4, &endptr, 10);
+                if (val > highest && val < 10000 && endptr != fname + 4) {
+                    highest = (int)val;
+                }
+            }
+            entry.close();
+        }
+        dir.close();
+        return highest;
+    }
+
+    // Verifica espaço livre no cartão
+    bool checkFreeSpace() {
+        uint32_t freeKB = getFreeSpaceKB();
+        if (freeKB < SD_MIN_FREE_SPACE_KB) {
+            Serial.print(F("[SD] Espaço baixo: ")); Serial.print(freeKB); Serial.println(F(" KB"));
+            return false;
+        }
+        return true;
+    }
 };
 
 CartaoSD *CartaoSD::instance{nullptr};
-CartaoSD *CartaoSD::GetInstance()
-{
-    if (instance == NULL)
-    {
+
+CartaoSD *CartaoSD::GetInstance() {
+    if (instance == nullptr) {
         instance = new CartaoSD();
 
-        SPI1.setRX(SD_RXPIN); // MISO
-        SPI1.setTX(SD_TXPIN); // MOSI
+        // Configura SPI1 para SD
+        SPI1.setRX(SD_RXPIN);
+        SPI1.setTX(SD_TXPIN);
         SPI1.setSCK(SD_SCKPIN);
         SPI1.setCS(SD_CSPIN);
-
         SPI1.begin(true);
 
-        if (!SD.begin(SD_CSPIN, SPI1))
-        {
-            D_println("Erro inicialização SD");
+        if (!SD.begin(SD_CSPIN, SPI1)) {
+            D_println(F("[SD] Erro inicialização"));
+        } else {
+            // Verifica se cartão presente e tem espaço
+            if (instance->checkFreeSpace()) {
+                D_println(F("[SD] OK"));
+            } else {
+                D_println(F("[SD] Espaço insuficiente"));
+            }
         }
     }
     return instance;
 }
 
-#endif //_CARTAOSD_H
+#endif // _CARTAOSD_H

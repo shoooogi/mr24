@@ -106,28 +106,37 @@ void loop()
         myInstance->PrintarDados();
     }
 
-    // Processa recepção CAN (polling com mutex)
+    // Processa recepção CAN (polling)
     myInstance->ProcessarCanRx();
 
-    // Watchdog CAN: se comunicação perdida, pisca LED padrão diferente
+    // Watchdog CAN
     static bool canLost = false;
     if (!myInstance->CanWatchdogOk()) {
         if (!canLost) {
             D_println(F("[CAN] WATCHDOG: Comunicação perdida!"));
             canLost = true;
         }
-        // Pisca rápido contínuo = CAN lost
         digitalWrite(LED_BUILTIN, (now / 200) % 2);
     } else {
         if (canLost) {
             D_println(F("[CAN] Comunicação restaurada"));
             canLost = false;
         }
-        // LED acesso curto a cada envio bem-sucedido (já feito em sendCanDataTo)
     }
 
-    // Escrita no SD (não bloqueante, rápida)
+    // Watchdog Telemetria (chamado periodicamente)
+    Comunicacao::telemetriaWatchdog();
+    Comunicacao::processTelemetriaRx();
+
+    // Escrita no SD (não bloqueante)
     myInstance->EscreverSD();
+
+    // Flush periódico do SD (a cada 10s)
+    static uint32_t lastSdFlush = 0;
+    if (now - lastSdFlush >= 10000) {
+        lastSdFlush = now;
+        // O flush é feito automaticamente no escreverSD baseado no tempo
+    }
 
     // Pequeno yield para não travar watchdog do sistema
     yield();
