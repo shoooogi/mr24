@@ -19,18 +19,12 @@ class Freio
 public:
     static Freio *GetInstance();
 
-    /**
-     * @return bool
-     */
-    bool Debug()
-    {
-        return false;
-    }
+    bool Debug() { return false; }
 
     void setValoresDeTeste()
     {
-        pressaoAtual = (((double)random(255) / 146.25) * 2.1428);
-        nivelAtual = random(1);
+        pressaoAtual = (random(0, 6001) / 100.0);  // 0.00 a 60.00 MPa
+        nivelAtual = random(0, 2);                  // 0 ou 1
     }
 
     int setNivelAtual()
@@ -39,7 +33,7 @@ public:
         return nivelAtual;
     }
 
-    int setPressaoAtual()
+    double setPressaoAtual()
     {
         pressaoAtual = calculaPressao();
         return pressaoAtual;
@@ -73,24 +67,16 @@ public:
         return fator * PMAX;
     }
 
-    int getNivelAtual()
-    {
-        return nivelAtual;
-    }
+    int getNivelAtual() const { return nivelAtual; }
+    double getPressaoAtual() const { return pressaoAtual; }
 
-    double getPressaoAtual()
-    {
-        return pressaoAtual;
-    }
-
-public:
     Freio() = default;
 
 private:
     static Freio *instance;
 
-    int nivelAtual;
-    double pressaoAtual;
+    int nivelAtual = 0;
+    double pressaoAtual = 0.0;
 };
 
 Freio *Freio::instance{nullptr};

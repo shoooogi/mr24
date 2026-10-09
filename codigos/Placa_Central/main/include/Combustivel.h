@@ -28,44 +28,33 @@ class Combustivel
 public:
     static Combustivel *GetInstance();
 
-    /**
-     * Imprime o nível atual de combustível no momento da chamada.
-     * Retorna verdadeiro se o valor não for previsto.
-     */
     bool Debug()
     {
-        bool erro = false;
-        if (Serial.available())
+        if (nivelAtual == ALTO)
+            D_println(F("Nível de combustível: 2 - ALTO"));
+        else if (nivelAtual == MEDIO)
+            D_println(F("Nível de combustível: 1 - MEDIO"));
+        else if (nivelAtual == BAIXO)
+            D_println(F("Nível de combustível: 0 - BAIXO"));
+        else
         {
-            String s;
-            if (nivelAtual == ALTO)
-                s = "2 - ALTO";
-            else if (nivelAtual == MEDIO)
-                s = "1 - MEDIO";
-            else if (nivelAtual == BAIXO)
-                s = "0 - BAIXO";
-            else
-            {
-                s = "VALOR INESPERADO";
-                erro = true;
-            }
-
-            D_println("Nível de combustível: " + s);
+            D_println(F("Nível de combustível: VALOR INESPERADO"));
+            return true;
         }
-        return erro;
+        return false;
     }
 
     void setValoresDeTeste()
     {
-        int sensorSuperior = (random(10) % 2);
-        int sensorInferior = (random(10) % 2);
+        int sensorSuperior = random(2);
+        int sensorInferior = random(2);
 
         if (sensorInferior == HIGH) // Se o inferior não detecta combustível
         {
             nivelAtual = BAIXO;
         }
-        if (sensorSuperior == LOW) // Se o superior detecta combustível
-        {                          // E o inferior TAMBÉM (1º if)
+        else if (sensorSuperior == LOW) // Se o superior detecta combustível
+        {
             nivelAtual = ALTO;
         }
         else // Se o superior não detecta e o inferior detecta
@@ -88,33 +77,26 @@ public:
         if (sensorInferior == HIGH) // Se o inferior não detecta combustível
         {
             nivelAtual = BAIXO;
-            return nivelAtual;
         }
-        if (sensorSuperior == LOW) // Se o superior detecta combustível
-        {                          // E o inferior TAMBÉM (1º if)
+        else if (sensorSuperior == LOW) // Se o superior detecta combustível
+        {
             nivelAtual = ALTO;
-            return nivelAtual;
         }
         else // Se o superior não detecta e o inferior detecta
         {
             nivelAtual = MEDIO;
-            return MEDIO;
         }
-        return 0;
-    }
-
-    short getNivelAtual()
-    {
         return nivelAtual;
     }
 
-public:
+    short getNivelAtual() const { return nivelAtual; }
+
     Combustivel() = default;
 
 private:
     static Combustivel *instance;
 
-    short nivelAtual;
+    short nivelAtual = BAIXO;
 };
 
 Combustivel *Combustivel::instance{nullptr};

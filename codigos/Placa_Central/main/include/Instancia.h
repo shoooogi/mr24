@@ -73,7 +73,7 @@ public:
             cartaoSD->getSdrw(),
             gps->getFix()
         );
-        return false;
+        return true;
     }
 
     void PrintarDados() {
@@ -81,8 +81,7 @@ public:
     }
 
     bool EnviarDadosTelemetria() {
-        comunicacao->enviarDadosTelemetria(dados->getStructDadosLight());
-        return false;
+        return comunicacao->enviarDadosTelemetria(dados->getStructDadosLight());
     }
 
     bool EnviarDadosCanBus() {

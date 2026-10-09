@@ -15,7 +15,6 @@ class Velocidade
 public:
     static Velocidade *GetInstance();
 
-    static void updateVel();  // ISR
     bool Debug() { return true; }
 
     void setValoresDeTeste() {
@@ -39,6 +38,9 @@ private:
     static volatile uint32_t lastMicros;
     static volatile uint32_t pulseWidth;
     static volatile double vel;
+
+    // ISR estática (não membro) para uso com attachInterrupt
+    static void isrHandler();
 };
 
 Velocidade *Velocidade::instance{nullptr};
@@ -46,17 +48,7 @@ volatile uint32_t Velocidade::lastMicros = 0;
 volatile uint32_t Velocidade::pulseWidth = 0;
 volatile double Velocidade::vel = 0.0;
 
-Velocidade *Velocidade::GetInstance() {
-    if (instance == nullptr) {
-        instance = new Velocidade();
-        pinMode(VEL_INTERRUPT_PIN, INPUT_PULLUP);
-        attachInterrupt(digitalPinToInterrupt(VEL_INTERRUPT_PIN), updateVel, RISING);
-        lastMicros = micros();
-    }
-    return instance;
-}
-
-void Velocidade::updateVel() {
+inline void Velocidade::isrHandler() {
     uint32_t now = micros();
     uint32_t dt = now - lastMicros;
     lastMicros = now;
@@ -64,6 +56,16 @@ void Velocidade::updateVel() {
     if (dt >= 100) {  // filtro ruído
         vel = static_cast<double>(MINUTO_EM_MICROSSEGUNDOS) / dt;
     }
+}
+
+inline Velocidade *Velocidade::GetInstance() {
+    if (instance == nullptr) {
+        instance = new Velocidade();
+        pinMode(VEL_INTERRUPT_PIN, INPUT_PULLUP);
+        attachInterrupt(digitalPinToInterrupt(VEL_INTERRUPT_PIN), isrHandler, RISING);
+        lastMicros = micros();
+    }
+    return instance;
 }
 
 #endif // _VEL_H

@@ -12,6 +12,34 @@
 #include "include/can_protocol.h"
 #include "include/can_random_sender.h"  // DEBUG: dados aleatórios
 
+// ============================================================
+// DEFINIÇÕES DE VARIÁVEIS GLOBAIS (evita multiple definition)
+// ============================================================
+
+// CAN (MCP2515 via SPI0)
+ACAN2515 can(CAN_CSPIN, SPI, CAN_INPIN);
+
+// Telemetria LoRa E32 via HardwareSerial (UART1)
+LoRa_E32 e32ttl100(&TELEMETRIA_UART, TELEMETRIA_AUX, UART_BPS_RATE_9600);
+
+// Estado do CAN
+uint16_t canErrorCode = 0;
+bool canInitialized = false;
+volatile uint32_t lastCanTxTime = 0;
+volatile uint32_t lastCanRxTime = 0;
+
+// Estado da Telemetria
+bool telemetriaInitialized = false;
+bool telemetriaModuleResponding = false;
+volatile uint32_t lastTelemetriaTxTime = 0;
+volatile uint32_t lastTelemetriaRxTime = 0;
+uint8_t telemetriaConsecutiveFailures = 0;
+
+// Random CAN
+bool enableRandomCAN = false;
+static unsigned long ultimoEnvioRandom = 0;
+static const unsigned long INTERVALO_MS_RANDOM = 700;
+
 /**
  * DECLARAÇÕES DE FUNÇÕES
  */
@@ -65,7 +93,7 @@ void setup1()
     // Timer no core 1 para leitura de sensores (ADC, I2C, GPS, SD)
     // NÃO faz CAN/SPI aqui - evita concorrência
     if (Core1Timer1.attachInterruptInterval(INTERVALO_TIMER_MS, UpdateSensors)) {
-        D_println(F("Core1Timer1 OK. Intervalo: ") + String(INTERVALO_TIMER_MS) + F(" ms"));
+        D_print(F("Core1Timer1 OK. Intervalo: ")); D_print(INTERVALO_TIMER_MS); D_println(F(" ms"));
     } else {
         D_println(F("Falha no Core1Timer1!"));
     }
@@ -171,4 +199,70 @@ bool CheckCanWatchdog(struct repeating_timer *t)
     (void)t;
     // Verificação já feita no loop() do core 0
     return true;
+}
+
+// ============================================================
+// RANDOM CAN DEBUG (implementação inline no .ino para evitar multiple definition)
+// ============================================================
+
+void setupRandomCAN() {
+    unsigned long seed = millis();
+    #if defined(ARDUINO_ARCH_RP2040)
+        seed += analogRead(26);
+    #else
+        seed += analogRead(A0);
+    #endif
+    if (seed == 0) seed = 0xDEADBEEF;
+    randomSeed(seed);
+
+    ultimoEnvioRandom = millis();
+    Serial.println(F("[RANDOM_CAN_CENTRAL] Inicializado (DESATIVADO por padrão)"));
+}
+
+void sendRandomCAN(Comunicacao* comunicacao) {
+    if (!enableRandomCAN) return;
+    if (!comunicacao) return;
+
+    unsigned long agora = millis();
+    if (agora - ultimoEnvioRandom < INTERVALO_MS_RANDOM) return;
+    ultimoEnvioRandom = agora;
+
+    comunicacao->processCanRx();
+
+    float vel         = random(0, 121);
+    float rpm         = random(0, 6001);
+    float tensaoBat   = (1200 + random(250)) / 100.0f;
+    float tmpCvt      = (600 + random(61)) / 10.0f;
+    float tmpAmb      = (150 + random(26)) / 10.0f;
+    int32_t nivelFreio = random(0, 4);
+    int32_t nivelComb  = random(0, 3);
+    float pressaoFreio = random(0, 2001) / 100.0f;
+    float pedal       = random(0, 101) / 100.0f;
+    float latitude    = (-2300 + random(2001)) / 100.0f;
+    float longitude   = (-4700 + random(2001)) / 100.0f;
+    uint8_t sdrw      = random(0, 2);
+    uint8_t fix_gps   = random(0, 2);
+
+    DadosCompartilhamento data = {0};
+    data.vel         = vel;
+    data.rpm         = rpm;
+    data.tensaoBat   = tensaoBat;
+    data.tmpCvt      = tmpCvt;
+    data.tmpAmb      = tmpAmb;
+    data.nivelFreio  = nivelFreio;
+    data.nivelComb   = nivelComb;
+    data.pressaoFreio = pressaoFreio;
+    data.pedal       = pedal;
+    data.latitude    = latitude;
+    data.longitude   = longitude;
+    data.sdrw        = sdrw;
+    data.fix_gps     = fix_gps;
+    data.errorCan    = false;
+
+    bool ok = comunicacao->sendCanDataTo(data);
+    if (ok) {
+        Serial.println(F("[RANDOM_CAN_CENTRAL] Lote completo enviado OK"));
+    } else {
+        Serial.println(F("[RANDOM_CAN_CENTRAL] Falha no lote"));
+    }
 }

@@ -15,28 +15,27 @@
 #include "LoRa_E32.h"
 
 // ============================================================
-// OBJETOS GLOBAIS
+// OBJETOS GLOBAIS (extern declarations - defined in .cpp)
 // ============================================================
 
 // CAN (MCP2515 via SPI0)
-ACAN2515 can(CAN_CSPIN, SPI, CAN_INPIN);
+extern ACAN2515 can;
 
 // Telemetria LoRa E32 via HardwareSerial (UART1)
-// Constructor: LoRa_E32(HardwareSerial* serial, byte auxPin, UART_BPS_RATE bpsRate)
-LoRa_E32 e32ttl100(&TELEMETRIA_UART, TELEMETRIA_AUX, UART_BPS_RATE_9600);
+extern LoRa_E32 e32ttl100;
 
 // Estado do CAN
-static uint16_t canErrorCode = 0;
-static bool canInitialized = false;
-static volatile uint32_t lastCanTxTime = 0;
-static volatile uint32_t lastCanRxTime = 0;
+extern uint16_t canErrorCode;
+extern bool canInitialized;
+extern volatile uint32_t lastCanTxTime;
+extern volatile uint32_t lastCanRxTime;
 
 // Estado da Telemetria
-static bool telemetriaInitialized = false;
-static bool telemetriaModuleResponding = false;
-static volatile uint32_t lastTelemetriaTxTime = 0;
-static volatile uint32_t lastTelemetriaRxTime = 0;
-static uint8_t telemetriaConsecutiveFailures = 0;
+extern bool telemetriaInitialized;
+extern bool telemetriaModuleResponding;
+extern volatile uint32_t lastTelemetriaTxTime;
+extern volatile uint32_t lastTelemetriaRxTime;
+extern uint8_t telemetriaConsecutiveFailures;
 
 // ============================================================
 // CLASSE COMUNICACAO
@@ -315,10 +314,6 @@ private:
         c.close();
         return ok;
     }
-
-    // ==================== HELPERS PACKING ====================
-    static inline void pack_float(float val, uint8_t* buf) { memcpy(buf, &val, sizeof(float)); }
-    static inline void pack_int32(int32_t val, uint8_t* buf) { memcpy(buf, &val, sizeof(int32_t)); }
 
     // ==================== PINOS E32 ====================
     static void setupE32Pins() {

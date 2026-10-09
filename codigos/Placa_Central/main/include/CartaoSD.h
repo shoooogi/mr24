@@ -36,22 +36,22 @@ public:
 
     bool Debug() {
         if (!Serial) return true;
-        D_println("=== CARTÃO SD ===");
+        D_println(F("=== CARTÃO SD ==="));
         if (!arquivoCriado) {
-            D_println("Nenhum arquivo criado.");
+            D_println(F("Nenhum arquivo criado."));
             return true;
         }
         if (!SD.exists(nomeArquivo)) {
-            D_println("Arquivo não encontrado.");
+            D_println(F("Arquivo não encontrado."));
             return false;
         }
         File f = SD.open(nomeArquivo, FILE_READ);
         if (!f) {
-            D_println("Falha ao abrir arquivo.");
+            D_println(F("Falha ao abrir arquivo."));
             return false;
         }
         f.close();
-        D_println("SD OK.");
+        D_println(F("SD OK."));
         return true;
     }
 
@@ -124,9 +124,18 @@ public:
 
     // Verifica espaço livre no cartão (KB)
     uint32_t getFreeSpaceKB() {
-        // SDFS no RP2040 não expõe card()->sectorCount() diretamente
-        // Usa estimativa baseada em setor padrão (512 bytes)
-        // Retorna 0 se não disponível (assume espaço suficiente)
+        // Tenta obter espaço livre real do SD
+        // Nota: SDFS no RP2040 não expõe card()->sectorCount() diretamente
+        // Usa SD.totalSize() e SD.usedSize() se disponíveis
+        #if defined(SD_TOTAL_SIZE_AVAILABLE)
+            uint64_t totalBytes = SD.totalSize();
+            uint64_t usedBytes = SD.usedSize();
+            if (totalBytes > usedBytes) {
+                return (uint32_t)((totalBytes - usedBytes) / 1024);
+            }
+        #endif
+        
+        // Fallback: retorna valor conservador
         return 1024; // 1MB estimado - conservador
     }
 
@@ -141,6 +150,7 @@ private:
     static CartaoSD *instance;
 
     // Obtém timestamp do GPS para nome do arquivo
+    // Retorna true se conseguiu, false para usar fallback
     bool getGPSTimestamp(char* buf, size_t len) {
         // TODO: integrar com GPS real quando disponível
         // Por enquanto retorna false para usar fallback sequencial

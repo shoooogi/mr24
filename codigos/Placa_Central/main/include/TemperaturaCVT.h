@@ -17,13 +17,13 @@ public:
 
     float setTemperaturaObjeto()
     {
-        temperaturaObjeto = mlx.readObjectTempC();
+        temperaturaObjeto = mlx->readObjectTempC();
         return temperaturaObjeto;
     }
 
     float setTemperaturaAmbiente()
     {
-        temperaturaAmbiente = mlx.readAmbientTempC();
+        temperaturaAmbiente = mlx->readAmbientTempC();
         return temperaturaAmbiente;
     }
 
@@ -33,12 +33,12 @@ public:
         temperaturaObjeto = (random(2000) / 10.0);
     }
 
-    float getTemperaturaObjeto()
+    float getTemperaturaObjeto() const
     {
         return temperaturaObjeto;
     }
 
-    float getTemperaturaAmbiente()
+    float getTemperaturaAmbiente() const
     {
         return temperaturaAmbiente;
     }
@@ -48,31 +48,29 @@ public:
         if (!Serial)
             return false;
 
-        String s = String("TAmbiente: ");
-        s = String(s + temperaturaAmbiente + " | TObjeto: ");
-        s = String(s + temperaturaObjeto);
-        D_println(s);
+        D_print(F("TAmbiente: ")); D_print(temperaturaAmbiente);
+        D_print(F(" | TObjeto: ")); D_println(temperaturaObjeto);
 
         return true;
     }
 
-    Adafruit_MLX90614 getTermopar()
+    // Retorna referência para evitar cópia
+    const Adafruit_MLX90614& getTermopar() const
     {
-        return mlx;
+        return *mlx;
     }
 
-public:
     TemperaturaCVT() = default;
 
 private:
     static TemperaturaCVT *instance;
 
-    static Adafruit_MLX90614 mlx;
+    // Ponteiro para evitar problema de inicialização estática
+    Adafruit_MLX90614* mlx = nullptr;
     float temperaturaObjeto = 0.0;
     float temperaturaAmbiente = 0.0;
 };
 
-Adafruit_MLX90614 TemperaturaCVT::mlx = Adafruit_MLX90614();
 TemperaturaCVT *TemperaturaCVT::instance{nullptr};
 TemperaturaCVT *TemperaturaCVT::GetInstance()
 {
@@ -83,9 +81,9 @@ TemperaturaCVT *TemperaturaCVT::GetInstance()
         Wire.setSDA(I2C_SDA);
         Wire.setSCL(I2C_SCL);
         Wire.begin();
-        mlx = Adafruit_MLX90614();
-
-        mlx.begin(0x5A, &Wire); 
+        
+        instance->mlx = new Adafruit_MLX90614();
+        instance->mlx->begin(0x5A, &Wire); 
     }
 
     return instance;

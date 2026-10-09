@@ -11,7 +11,6 @@
 #include "RPM_Motor.h"
 #include "GPS.h"
 #include "Freio.h"
-#include "Instancia.h"
 #include "Constantes.h"
 #include <cstdio>  // snprintf
 

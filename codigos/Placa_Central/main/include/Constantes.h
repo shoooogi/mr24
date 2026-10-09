@@ -7,6 +7,7 @@
 #define _CONSTANTES_H
 
 #include <climits>  // Para INT_MAX, LONG_MAX
+#include <cstdint>  // Para int32_t, uint8_t, etc.
 
 #define DEBUG 0 // 0 Para não usar serial, 1 para usar serial
 
@@ -191,12 +192,12 @@ struct DadosCompartilhamento {
     float pressaoFreio;
     float pedal;
     float tensaoBat;
-    float tmpCvt;      // era double
-    float tmpAmb;      // era double
-    float rpm;         // era double
-    float vel;         // era double
-    float latitude;    // era double
-    float longitude;   // era double
+    float tmpCvt;
+    float tmpAmb;
+    float rpm;
+    float vel;
+    float latitude;
+    float longitude;
     bool errorCan;
     bool fix_gps;
     bool sdrw;
