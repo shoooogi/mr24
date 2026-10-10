@@ -132,7 +132,7 @@ public:
             memcpy(frame.data, data, len);
             bool ok = can.tryToSend(frame);
             if (!ok) {
-                Serial.print(F("[CAN] TX falhou id=")); Serial.println(id);
+                D_print(F("[CAN] TX falhou id=")); D_println(id);
             }
             return ok;
         };
@@ -251,7 +251,7 @@ private:
             // Envia frame com retry
             if (!enviarFrameComRetry(frame)) {
                 all_ok = false;
-                Serial.print(F("[TLM] Falha frame ")); Serial.print(frame_idx);
+                D_print(F("[TLM] Falha frame ")); D_print(frame_idx);
                 Serial.print(F("/")); Serial.println(total_frames);
             } else {
                 Serial.print(F("[TLM] Frame ")); Serial.print(frame_idx);

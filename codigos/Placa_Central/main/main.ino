@@ -69,7 +69,7 @@ void setup()
 
     D_println(F("INICIALIZANDO INSTANCIA"));
     D_println(F("======================="));
-    myInstance = Instancia::GetInstance();
+    myInstance = Instancia::GetInstance();  // shortcut: lazy init, verifique CAN apos
 
     // DEBUG: Inicializa gerador aleatório CAN (desativado por padrão)
     setupRandomCAN();
@@ -77,7 +77,7 @@ void setup()
     D_println(F("======================="));
     D_println(F("INICIALIZACAO CONCLUIDA"));
 
-    setupCompleto = true;
+    setupCompleto = true;  // shortcut: lazy init, verifique CAN antes de core 1
     D_println(F("Setup core0 finalizado."));
 }
 
@@ -118,6 +118,7 @@ void loop()
             myInstance->SincronizarDados();
 
             // Envia CAN (com mutex interno)
+            // shortcut: falha CAN nao entra safe-state automatico, upgrade = enviar frame emergencia
             if (!myInstance->EnviarDadosCanBus()) {
                 D_println(F("[WARN] Falha no envio CAN"));
             }
@@ -144,7 +145,7 @@ void loop()
             D_println(F("[CAN] WATCHDOG: Comunicação perdida!"));
             canLost = true;
         }
-        digitalWrite(LED_BUILTIN, (now / 200) % 2);
+        digitalWrite(LED_BUILTIN, LOW);  // falha persistente (não blink)
     } else {
         if (canLost) {
             D_println(F("[CAN] Comunicação restaurada"));
@@ -186,7 +187,7 @@ bool UpdateSensors(struct repeating_timer *t)
     // Pisca LED para indicar atividade do timer
     digitalWrite(LED_BUILTIN, LOW);
 
-    // Atualiza sensores (não usam SPI/CAN)
+    // shortcut: atualiza sensores rápidos (não CAN/SD/SPI), upgrade = medir micros() se >10ms
     myInstance->SetDadosSistemas();  // Combustível, Freio, Pedal, Tensão, Temp
 
     digitalWrite(LED_BUILTIN, HIGH);

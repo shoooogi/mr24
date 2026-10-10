@@ -56,9 +56,9 @@ public:
                 if (gps.encode(c)) newData = true;
             }
         #else
-            while (Serial2.available())
+            while (Serial1.available())
             {
-                char c = Serial2.read();
+                char c = Serial1.read();
                 if (gps.encode(c)) newData = true;
             }
         #endif
@@ -156,9 +156,9 @@ inline GPS *GPS::GetInstance()
                 Serial.println(F("[GPS] Inicializado Serial1"));
             }
         #else
-            Serial2.setTX(GPS_TX);
-            Serial2.setRX(GPS_RX);
-            Serial2.begin(GPS_BAUD);
+            Serial1.setTX(GPS_TX);
+            Serial1.setRX(GPS_RX);
+            Serial1.begin(GPS_BAUD);
             if (!Serial2) {
                 Serial.println(F("[GPS] Falha Serial2"));
             } else {

@@ -70,10 +70,13 @@ public:
         atualizaDadosCompartilhamento();
         atualizaDadosTelemetria();
         dadosEmAtualizacao = false;
+        interrupts();
     }
 
     // Retorna cópia da struct para envio CAN (usa float)
     DadosCompartilhamento getStructDados() const {
+        // shortcut: dadosEmAtualizacao protege contra leitura parcial do loop (core 0)
+        // upgrade path: se precisar de atualização contínua sem paradas, usar double-buffer
         return dadosCompartilhamento;
     }
 
