@@ -198,8 +198,11 @@ public:
         CANMessage frame;
         while (can.available()) {
             if (can.receive(frame)) {
-                lastCanRxTime = millis();
-                count++;
+                // shortcut: valida conteúdo básico; upgrade = parser completo por ID + CRC
+                if (frame.id >= 1 && frame.id <= 11 && frame.len == CAN_DLC[frame.id]) {
+                    lastCanRxTime = millis();
+                    count++;
+                }
             }
         }
         return count;

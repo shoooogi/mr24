@@ -34,9 +34,7 @@ void setup1() {
 void loop() {
     while (!initialized) delay(100);
     
-    // TESTE LOOPBACK: envia 1 frame, recebe, pisca LED
-    static uint32_t lastTest = 0;
-    static int testId = 1;
+    // Loopback removido — shortcut: não poluir CAN em produção
     uint32_t now = millis();
 
     static uint32_t lastDebug = 0;
@@ -50,18 +48,8 @@ void loop() {
        Serial.print(F(" vel=")); Serial.println(vel);
     }
     
-    if (now - lastTest >= 1000) {  // 1 frame/seg
-        lastTest = now;
-        
-        uint8_t buf[8] = {0};
-        pack_float(12.34f, buf);
-        if (sendCanFrame(testId, CAN_DLC[testId], buf)) {
-            Serial.print(F("[LOOPBACK] TX id=")); Serial.print(testId); Serial.println(F(" OK"));
-        } else {
-            Serial.print(F("[LOOPBACK] TX id=")); Serial.print(testId); Serial.println(F(" FAIL"));
-        }
-        testId = (testId % 11) + 1;
-    }
+    // TESTE LOOPBACK REMOVIDO — shortcut: loopback em produção polui CAN e mascara watchdog
+    // if (now - lastTest >= 1000) { ... }
     
     // Processa RX (polling)
     receiveCan();

@@ -100,13 +100,14 @@ static bool setupComunicacao() {
 static void handleFrame(const CANMessage& frame) {
     lastCanRxTime = millis();
 
-    // Verifica DLC esperado
+    // Verifica DLC esperado — shortcut: rejeita frame corrompido; upgrade = CRC16 quando houver atualização coordenada
     if (frame.id >= 1 && frame.id <= 11) {
         uint8_t expectedDlc = CAN_DLC[frame.id];
         if (frame.len != expectedDlc) {
             Serial.print(F("[CAN] DLC mismatch id=")); Serial.print(frame.id);
             Serial.print(F(" esperado=")); Serial.print(expectedDlc);
             Serial.print(F(" recebido=")); Serial.println(frame.len);
+            return;  // shortcut: não processa frame com largura errada
         }
     }
 

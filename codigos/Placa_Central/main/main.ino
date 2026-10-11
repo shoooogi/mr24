@@ -36,7 +36,7 @@ volatile uint32_t lastTelemetriaRxTime = 0;
 uint8_t telemetriaConsecutiveFailures = 0;
 
 // Random CAN
-bool enableRandomCAN = true;
+bool enableRandomCAN = false;
 static unsigned long ultimoEnvioRandom = 0;
 static const unsigned long INTERVALO_MS_RANDOM = 700;
 
