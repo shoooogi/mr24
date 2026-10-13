@@ -16,7 +16,7 @@
 
 // Controle do gerador: ligue/desligue com esta variável.
 // PADRÃO = false (gerador DESATIVADO em produção).
-bool enableRandomCAN = false;
+bool enableRandomCAN = true;
 
 // Intervalo entre lotes completos (ms)
 static unsigned long ultimoEnvio = 0;
